@@ -1,5 +1,4 @@
-Audi Connect Integration for Home Assistant
-============================================================
+# Audi Connect Integration for Home Assistant
 
 [![GitHub Activity][commits-shield]][commits]
 [![License][license-shield]](LICENSE.md)
@@ -7,27 +6,31 @@ Audi Connect Integration for Home Assistant
 
 [![hacs][hacsbadge]](hacs)
 
-Maintainers Wanted
-------------
-Due to time limitations this project is not actively maintained anymore. It will continue to work as long as Audi does not change the API again. 
+## Notice
+
+Due to API changes it might be that currently not all functionality is given. Please open a issue to report the topics you are missing.
+
+## Maintainers Wanted
+
+Due to time limitations this project is not actively maintained anymore. It will continue to work as long as Audi does not change the API again.
 However, I'm open to someone else taking the lead. If you would like to become a maintainer, please contact me.
 
-Description
-------------
+## Description
+
 The `audiconnect` component provides an integration with the Audi Connect cloud service. It adds presence detection, sensors such as range, mileage, and fuel level, and provides car actions such as locking/unlocking and setting the pre-heater.
 
-**Note:** Certain functions require special permissions from Audi, such as position update via GPS. 
+**Note:** Certain functions require special permissions from Audi, such as position update via GPS.
 
 Credit for initial API discovery go to the guys at the ioBroker VW-Connect forum, who were able to figure out how the API and the PIN hashing works. Also some implementation credit to davidgiga1993 of the original [AudiAPI](https://github.com/davidgiga1993/AudiAPI) Python package, on which some of this code is loosely based.
 
-Installation
-------------
+## Installation
 
 There are two ways this integration can be installed into [Home Assistant](https://www.home-assistant.io).
 
 The easiest and recommended way is to install the integration using [HACS](https://hacs.xyz), which makes future updates easy to track and install.
 
 Alternatively, installation can be done manually by copying the files in this repository into the `custom_components` directory in the Home Assistant configuration directory:
+
 1. Open the configuration directory of your Home Assistant installation.
 2. If you do not have a `custom_components` directory, create it.
 3. In the `custom_components` directory, create a new directory called `audiconnect`.
@@ -35,14 +38,13 @@ Alternatively, installation can be done manually by copying the files in this re
 5. Restart Home Assistant.
 6. Add the integration to Home Assistant (see **Configuration**).
 
-Configuration
--------------
+## Configuration
 
 Configuration is done through the Home Assistant UI.
 
 To add the integration, go to **Settings ➤ Devices & Services ➤ Integrations**, click **➕ Add Integration**, and search for "Audi Connect".
 
-![Configuration](ha_config.png)
+![image](https://github.com/user-attachments/assets/facff84e-f40f-4090-9e44-80f698385426)
 
 ### Configuration Variables
 
@@ -60,50 +62,137 @@ To add the integration, go to **Settings ➤ Devices & Services ➤ Integrations
 
 **region**
 
-- (string)(Optional) The region where your Audi Connect account is registered. 
-   * 'DE' for Europe (or leave unset)
-   * 'US' for United States of America
-   * 'CA' for Canada
-   * 'CN' for China
+- (Required) The region where your Audi Connect account is registered.
+  - 'DE' for Europe (or leave unset)
+  - 'US' for United States of America
+  - 'CA' for Canada
+  - 'CN' for China
 
 **scan_interval**
 
-- (number)(Optional) The frequency in minutes for how often to fetch status data from Audi Connect. (Optional. Default is 10 minutes, can be no more frequent than 1 min.)
+- (number)(Optional) The frequency in minutes for how often to fetch status data from Audi Connect. (Optional. Default is 15 minutes, can be no more frequent than 15 min.)
 
-Services
---------
+## Options
 
-**audiconnect.refresh_vehicle_data**
+Find configuration options under **Settings ➤ Devices & Services ➤ Integrations ➤ Audi Connect ➤ Configure**:
 
-Normal updates retrieve data from the Audi Connect service, and don't interact directly with the vehicle. _This_ service triggers an update request from the vehicle itself. When data is retrieved successfully, Home Assistant is automatically updated. The service requires a vehicle identification number (VIN) as a parameter. 
+- **Cloud Update at Startup (`bool`)**: Toggle cloud updates at integration startup. Ideal for development or frequent HA restarts.
+- **Active Polling at Scan Interval (`bool`)**: Enable or disable active polling.
+- **Scan Interval (`int`)**: Defines polling frequency in minutes (minimum 15). Effective only if "Active Polling at Scan Interval" is enabled.
 
-**audiconnect.execute_vehicle_action**
+_Note: A Home Assistant restart is required for changes to take effect._
 
-Perform an action on the vehicle. The service takes a VIN and the action to perform as parameters. Possible action values:
-- lock
-- unlock 
-- start_climatisation
-- stop_climatisation
-- start_charger
-- start_timed_charger
-- stop_charger
-- start_preheater
-- stop_preheater
-- start_window_heating
-- stop_window_heating 
+## Services
 
-**Note:** Certain action require the S-PIN to be set in the configuration. 
+### Audi Connect: Refresh Vehicle Data
 
-When an action is successfully performed, an update request is automatically triggered. 
+`audiconnect.refresh_vehicle_data`
 
-Example Dashboard Card
-----------------------
+Normal updates retrieve data from the Audi Connect cloud service, and don't interact directly with the vehicle. _This_ service triggers an update request from the vehicle itself. When data is retrieved successfully, Home Assistant is automatically updated. The service requires a vehicle identification number (VIN) as a parameter.
 
-Below is an example Dashboard (Lovelace) card illustrating some of the sensors this Home Assistant addon provides. 
+#### Service Parameters
+
+- **`vin`**: The Vehicle Identification Number (VIN) of the Audi you want to control.
+
+### Audi Connect: Refresh Cloud Data
+
+`audiconnect.refresh_cloud_data`
+
+_This_ service triggers an update request from the cloud.
+
+- Functionality: Updates data for all vehicles from the online source, mirroring the action performed at integration startup or during scheduled refresh intervals.
+- Behavior: Does not force a vehicle-side data refresh. Consequently, if vehicles haven't recently pushed updates, retrieved data might be outdated.
+- Note: This service replicates the function of active polling without scheduling, offering a more granular control over data refresh moments.
+- **IMPORTANT:** This service has no built in usage limits. Excessive use may result in a temporary suspension of your account.
+
+#### Service Parameters
+
+- `none`
+
+### Audi Connect: Execute Vehicle Action
+
+`audiconnect.execute_vehicle_action`
+
+This service allows you to perform actions on your Audi vehicle, specified by the vehicle identification number (VIN) and the desired action.
+
+#### Service Parameters
+
+- **`vin`**: The Vehicle Identification Number (VIN) of the Audi you want to control.
+- **`action`**: The specific action to perform on the vehicle. Available actions include:
+  - **`lock`**: Lock the vehicle.
+  - **`unlock`**: Unlock the vehicle.
+  - **`start_climatisation`**: Start the vehicle's climatisation system. (Legacy)
+  - **`stop_climatisation`**: Stop the vehicle's climatisation system.
+  - **`start_charger`**: Start charging the vehicle.
+  - **`start_timed_charger`**: Start the vehicle's charger with a timer.
+  - **`stop_charger`**: Stop charging the vehicle.
+  - **`start_preheater`**: Start the vehicle's preheater system.
+  - **`stop_preheater`**: Stop the vehicle's preheater system.
+  - **`start_window_heating`**: Start heating the vehicle's windows.
+  - **`stop_window_heating`**: Stop heating the vehicle's windows.
+
+#### Usage Example
+
+To initiate the lock action for a vehicle with VIN `WAUZZZ4G7EN123456`, use the following service call:
+
+```yaml
+service: audiconnect.execute_vehicle_action
+data:
+  vin: "WAUZZZ4G7EN123456"
+  action: "lock"
+```
+
+#### Notes
+
+- Certain action require the S-PIN to be set in the configuration.
+- When the action is successfully performed, an update request is automatically triggered.
+
+### Audi Connect: Start Climate Control
+
+`audiconnect.start_climate_control`
+
+This service allows you to start the climate control with options for temperature, glass surface heating, and auto seat comfort.
+
+#### Service Parameters
+
+- **`vin`**: The Vehicle Identification Number (VIN) of the Audi you want to control.
+- **`temp_f`** (_optional_): Desired temperature in Fahrenheit. Default is `70`.
+- **`temp_c`** (_optional_): Desired temperature in Celsius. Default is `21`.
+- **`glass_heating`** (_optional_): Enable (`True`) or disable (`False`) glass heating. Default is `False`.
+- **`seat_fl`** (_optional_): Enable (`True`) or disable (`False`) the front-left seat heater. Default is `False`.
+- **`seat_fr`** (_optional_): Enable (`True`) or disable (`False`) the front-right seat heater. Default is `False`.
+- **`seat_rl`** (_optional_): Enable (`True`) or disable (`False`) the rear-left seat heater. Default is `False`.
+- **`seat_rr`** (_optional_): Enable (`True`) or disable (`False`) the rear-right seat heater. Default is `False`.
+
+#### Usage Example
+
+To start the climate control for a vehicle with VIN `WAUZZZ4G7EN123456` with a temperature of 72°F, enable glass heating, and activate both front seat heaters, use the following service call:
+
+```yaml
+service: audiconnect.start_climate_control
+data:
+  vin: "WAUZZZ4G7EN123456"
+  temp_f: 72
+  glass_heating: True
+  seat_fl: True
+  seat_fr: True
+```
+
+#### Notes
+
+- The `temp_f` and `temp_c` parameters are mutually exclusive. If both are provided, `temp_f` takes precedence.
+- If neither `temp_f` nor `temp_c` is provided, the system defaults to 70°F or 21°C.
+- Certain action require the S-PIN to be set in the configuration.
+- When the action is successfully performed, an update request is automatically triggered.
+
+## Example Dashboard Card
+
+Below is an example Dashboard (Lovelace) card illustrating some of the sensors this Home Assistant addon provides.
 
 ![Example Dashboard Card](card_example.png)
 
 The card requires the following front end mods:
+
 - https://github.com/thomasloven/lovelace-card-mod
 - https://github.com/custom-cards/circle-sensor-card
 
@@ -114,13 +203,13 @@ The card uses the following code in `ui-lovelace.yaml` (or wherever your Dashboa
 ```yaml
      - type: picture-elements
         image: /local/pictures/audi_sq7.jpeg
-        style: | 
+        style: |
           ha-card {
             border-radius: 10px;
             border: solid 1px rgba(100,100,100,0.3);
             box-shadow: 3px 3px rgba(0,0,0,0.4);
             overflow: hidden;
-          } 
+          }
         elements:
         - type: image
           image: /local/pictures/cardbackK.png
